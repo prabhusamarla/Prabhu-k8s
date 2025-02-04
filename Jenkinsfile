@@ -1,38 +1,60 @@
 pipeline {
     agent any
+
     environment {
         AWS_REGION = "us-east-1"
         CLUSTER_NAME = "eks-monitoring"
+        KUBECONFIG_PATH = "/var/lib/jenkins/.kube/config"
     }
+
     stages {
+        stage('Checkout Code') {
+            steps {
+                git branch: 'main', url: 'https://github.com/prabhusamarla/Prabhu-k8s.git'
+            }
+        }
+
         stage('Setup AWS Credentials & Kubeconfig') {
             steps {
-                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'admin']]) {
-                    sh '''
-                    # Update the kubeconfig file using AWS CLI
-                    aws eks --region ${AWS_REGION} update-kubeconfig --name ${CLUSTER_NAME}
-                    
-                    # Verify connection using kubectl
-                    kubectl get nodes
-                    '''
+                withCredentials([aws(credentialsId: 'admin', region: "${AWS_REGION}")]) {
+                    sh """
+                        aws eks --region ${AWS_REGION} update-kubeconfig --name ${CLUSTER_NAME}
+                        kubectl get nodes
+                    """
                 }
             }
         }
 
-        stage('Deploy Nginx using Helm') {
+        stage('Deploy Nginx using Kubectl') {
             steps {
                 script {
-                    // Ensure Helm is properly configured with the EKS cluster
-                    sh 'helm repo add stable https://charts.helm.sh/stable'
-                    sh 'helm repo update'
-                    
-                    // Install or upgrade the Nginx deployment using the values.yaml from the chart
-                    sh '''
-                    helm upgrade --install nginx ./charts/nginx \
-                        --values ./charts/nginx/values.yaml
-                    '''
+                    sh """
+                        kubectl apply -f deployment.yaml
+                        kubectl get pods
+                        kubectl get svc
+                    """
                 }
             }
+        }
+
+        stage('Verify Deployment') {
+            steps {
+                script {
+                    sh """
+                        kubectl rollout status deployment/nginx
+                        kubectl get all
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Nginx deployment successful!"
+        }
+        failure {
+            echo "Deployment failed. Check logs for details."
         }
     }
 }
