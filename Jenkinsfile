@@ -16,7 +16,7 @@ pipeline {
 
         stage('Setup AWS Credentials & Kubeconfig') {
             steps {
-                withCredentials([aws(credentialsId: 'admin', region: "${AWS_REGION}")]) {
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'admin']]) {
                     sh """
                         aws eks --region ${AWS_REGION} update-kubeconfig --name ${CLUSTER_NAME}
                         kubectl get nodes
@@ -27,9 +27,10 @@ pipeline {
 
         stage('Deploy Nginx using Kubectl') {
             steps {
-                script {
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'admin']]) {
                     sh """
-                        kubectl apply -f deployment.yaml
+                        kubectl apply -f ./manifests/deployment.yaml
+                        kubectl apply -f ./manifests/service.yaml
                         kubectl get pods
                         kubectl get svc
                     """
@@ -39,22 +40,18 @@ pipeline {
 
         stage('Verify Deployment') {
             steps {
-                script {
-                    sh """
-                        kubectl rollout status deployment/nginx
-                        kubectl get all
-                    """
-                }
+                sh "kubectl rollout status deployment/nginx"
+                sh "kubectl get all"
             }
         }
     }
 
     post {
         success {
-            echo "Nginx deployment successful!"
+            echo "✅ Nginx deployment successful!"
         }
         failure {
-            echo "Deployment failed. Check logs for details."
+            echo "❌ Deployment failed. Check logs for details."
         }
     }
 }
