@@ -7,6 +7,11 @@ pipeline {
         KUBECONFIG_PATH = "/var/lib/jenkins/.kube/config"
     }
 
+    // Set AWS credentials globally
+    options {
+        withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'admin']])
+    }
+
     stages {
         stage('Checkout Code') {
             steps {
@@ -16,31 +21,29 @@ pipeline {
 
         stage('Setup AWS Credentials & Kubeconfig') {
             steps {
-                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'admin']]) {
-                    sh """
-                        aws eks --region ${AWS_REGION} update-kubeconfig --name ${CLUSTER_NAME}
-                        kubectl get nodes
-                    """
-                }
+                sh """
+                    aws eks --region ${AWS_REGION} update-kubeconfig --name ${CLUSTER_NAME}
+                    kubectl get nodes
+                """
             }
         }
 
         stage('Deploy Nginx using Kubectl') {
             steps {
-                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'admin']]) {
-                    sh """
-                        kubectl apply -f deployment.yaml
-                        kubectl get pods
-                        kubectl get svc
-                    """
-                }
+                sh """
+                    kubectl apply -f .deployment.yaml
+                    kubectl get pods
+                    kubectl get svc
+                """
             }
         }
 
         stage('Verify Deployment') {
             steps {
-                sh "kubectl rollout status deployment/nginx"
-                sh "kubectl get all"
+                sh """
+                    kubectl rollout status deployment/nginx
+                    kubectl get all
+                """
             }
         }
     }
