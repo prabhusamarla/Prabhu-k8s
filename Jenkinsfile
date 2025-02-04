@@ -29,8 +29,7 @@ pipeline {
             steps {
                 withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'admin']]) {
                     sh """
-                        kubectl apply -f ./manifests/deployment.yaml
-                        kubectl apply -f ./manifests/service.yaml
+                        kubectl apply -f deployment.yaml
                         kubectl get pods
                         kubectl get svc
                     """
