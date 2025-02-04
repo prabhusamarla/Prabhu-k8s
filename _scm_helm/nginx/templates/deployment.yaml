@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: {{ include "nginx.fullname" . }}
   labels:
-    {{- include "nginx-deployment.labels" . | nindent 4 }}
+    {{- include "nginx.labels" . | nindent 4 }}
 spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
