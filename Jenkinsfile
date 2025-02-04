@@ -7,7 +7,6 @@ pipeline {
         KUBECONFIG_PATH = "/var/lib/jenkins/.kube/config"
     }
 
-    // Set AWS credentials globally
     options {
         withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'admin']])
     }
@@ -28,12 +27,12 @@ pipeline {
             }
         }
 
-        stage('Deploy Nginx using Kubectl') {
+        stage('Deploy Nginx using Helm') {
             steps {
                 sh """
-                    kubectl apply -f deployment.yaml
-                    kubectl get pods
-                    kubectl get svc
+                    helm repo add stable https://charts.helm.sh/stable || true
+                    helm repo update
+                    helm upgrade --install nginx ./_scm_helm/nginx --values ./_scm_helm/nginx/values.yaml
                 """
             }
         }
@@ -50,7 +49,7 @@ pipeline {
 
     post {
         success {
-            echo "✅ Nginx deployment successful!"
+            echo "✅ Nginx deployment via Helm successful!"
         }
         failure {
             echo "❌ Deployment failed. Check logs for details."
